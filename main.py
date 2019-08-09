@@ -25,12 +25,12 @@ EMBEDDING_DIR = 'pretrained_embeddings/'
 MAX_LEN_STATMENT = 50
 MAX_LEN_JUSTIFICATION = 100
 
-LSTM_HIDDEN_UNITS_STATEMENT = 256
-LSTM_HIDDEN_UNITS_JUSTIFICATION = 256
+LSTM_HIDDEN_UNITS_STATEMENT = 50
+LSTM_HIDDEN_UNITS_JUSTIFICATION = 50
 
-META_MODEL_UNITS = 256
-COUNTS_MODEL_UNITS = 64
-MULTIMODE_MODEL_UNITS = 1024
+META_MODEL_UNITS = 128
+COUNTS_MODEL_UNITS = 32
+MULTIMODE_MODEL_UNITS = 512
 
 EMBEDDING_DIM = 128
 
@@ -47,9 +47,9 @@ else:
     NUM_CLASSES = 6
     CHECKPOINT_PATH = 'checkpoints_multiclass/'
 
-NUM_EPOCHS = 20
-BATCH_SIZE = 32
-LEARNING_RATE = 0.001
+NUM_EPOCHS = 10
+BATCH_SIZE = 64
+LEARNING_RATE = 0.0001
 
 TRAIN_TEXT_ENCODER = True
 REPEAT_FIRST_BATCH = False
@@ -128,6 +128,12 @@ if __name__ == "__main__":
             best_val_acc = val_accuracy
             checkpoint.save(file_prefix=checkpoint_prefix)
             print('Model saved !!!')
+
+        test_loss, test_accuracy = train.predict_one_epoch(
+            test_df, BATCH_SIZE, text_encoder, meta_model, counts_model,
+            multimode_model,
+            binary_classification=BINARY_CLASSIFICATION)
+        print(f'  Test_loss: {test_loss},   Test_accuracy: {test_accuracy}')
 
         print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
 
