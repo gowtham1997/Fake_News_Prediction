@@ -17,11 +17,5 @@ class NNLMEncoder:
 
     def __call__(self, features: tf.Tensor):
 
-        shape = list(features.numpy().shape)
-        # print(shape)
-        flattened_features = tf.reshape(features, [-1])
-        flat_embeddings = self._embed(flattened_features)
-        shape[-1] = self._output_feature_size
-        shape = [-1 if s is None else s for s in shape]
-        embeddings = tf.reshape(flat_embeddings, shape)
+        embeddings = self._embed(features)
         return embeddings

@@ -1,12 +1,17 @@
-import numpy as np
 import pandas as pd
 
 import utils
 import nnlm_eager as nnlm
 import models
+import train
+
+from tensorflow.keras import optimizers
 
 import tensorflow as tf
 tf.enable_eager_execution()
+
+# import warnings
+# warnings.filterwarnings('ignore')
 
 TRAIN_CSV_PATH = 'LIAR-PLUS/dataset/mod_train.csv'
 VAL_CSV_PATH = 'LIAR-PLUS/dataset/mod_val.csv'
@@ -22,12 +27,25 @@ LSTM_HIDDEN_UNITS_STATEMENT = 256
 LSTM_HIDDEN_UNITS_JUSTIFICATION = 256
 
 META_MODEL_UNITS = 128
-COUNT_MODEL_UNITS = 128
+COUNTS_MODEL_UNITS = 64
 
 EMBEDDING_DIM = 128
 
 SENTENCE_ENCODER = 'NNLM'
 
+BINARY_CLASSIFICATION = True
+
+if BINARY_CLASSIFICATION:
+    NUM_CLASSES = 2
+else:
+    NUM_CLASSES = 6
+
+NUM_EPOCHS = 20
+BATCH_SIZE = 8
+LEARNING_RATE = 0.001
+
+TRAIN_TEXT_ENCODER = False
+REPEAT_FIRST_BATCH = False
 
 if __name__ == "__main__":
 
@@ -35,38 +53,44 @@ if __name__ == "__main__":
     val_df = pd.read_csv(VAL_CSV_PATH)
     test_df = pd.read_csv(TEST_CSV_PATH)
 
-    meta_columns = utils.get_suffixed_columns(train_df, '_id')
-    counts_columns = utils.get_suffixed_columns(train_df, '_counts')
-    text_columns = ['statement', 'justification']
+    train_df = utils.convert_col_to_list(train_df, 'subject_list_id')
+    val_df = utils.convert_col_to_list(val_df, 'subject_list_id')
+    test_df = utils.convert_col_to_list(test_df, 'subject_list_id')
 
-    train_text_df = train_df[text_columns]
-    val_text_df = val_df[text_columns]
-    test_text_df = test_df[text_columns]
+    # just batch to get shape info
+    dummy_gen = utils.batch(train_df, 8, REPEAT_FIRST_BATCH)
+    _, _, meta_feats, counts_feats, _, _ = next(dummy_gen)
 
-    train_meta_df = train_df[meta_columns]
-    val_meta_df = val_df[meta_columns]
-    test_meta_df = test_df[meta_columns]
+    meta_features_shape = (None, meta_feats.shape[-1])
+    counts_features_shape = (None, counts_feats.shape[-1])
+    multimode_features_shape = (
+        None, EMBEDDING_DIM + meta_feats.shape[-1] + counts_feats.shape[-1])
 
-    train_counts_df = train_df[counts_columns]
-    val_counts_df = val_df[counts_columns]
-    test_counts_df = test_df[counts_columns]
-
-    train_meta_features = utils.encode_meta_features(
-        train_meta_df, meta_columns)
-    val_meta_features = utils.encode_meta_features(
-        val_meta_df, meta_columns)
-    test_meta_features = utils.encode_meta_features(
-        test_meta_df, meta_columns)
-
-    train_count_features = np.hstack(train_counts_df.values)
-    val_count_features = np.hstack(val_counts_df.values)
-    test_count_features = np.hstack(test_counts_df.values)
-
-    meta_features_shape = (None, train_meta_features.shape[-1])
-    count_features_shape = (None, train_count_features.shape[-1])
+    print(meta_features_shape, counts_features_shape, multimode_features_shape)
 
     if SENTENCE_ENCODER == 'NNLM':
-        encoder = nnlm.NNLMEncoder(EMBEDDING_DIR + 'nnlm', EMBEDDING_DIM)
+        text_encoder = nnlm.NNLMEncoder(EMBEDDING_DIR + 'nnlm', EMBEDDING_DIM)
 
-    meta_model = models.MetaModel(META_MODEL_UNITS)
-    count_model = models.CountModel(COUNT_MODEL_UNITS)
+    meta_model = models.MetaModel(meta_features_shape, META_MODEL_UNITS)
+    counts_model = models.CountModel(counts_features_shape, COUNTS_MODEL_UNITS)
+    multimode_model = models.MultiModeModel(multimode_features_shape,
+                                            NUM_CLASSES)
+    optimizer = optimizers.Adam(learning_rate=LEARNING_RATE)
+
+    for epoch in range(NUM_EPOCHS):
+        loss, accuracy = train.train_one_epoch(
+            train_df, BATCH_SIZE, optimizer,
+            text_encoder, meta_model, counts_model, multimode_model,
+            train_text_encoder=TRAIN_TEXT_ENCODER,
+            repeat_first_batch=REPEAT_FIRST_BATCH,
+            binary_classification=BINARY_CLASSIFICATION)
+        print(
+            f'Epoch: {epoch + 1}, '
+            f'train_loss: {loss}, train_accuracy: {accuracy}')
+        loss, accuracy = train.predict_one_epoch(
+            val_df, BATCH_SIZE, text_encoder, meta_model, counts_model,
+            multimode_model,
+            binary_classification=BINARY_CLASSIFICATION)
+        print(
+            f'Epoch: {epoch + 1}, '
+            f'  val_loss: {loss},   val_accuracy: {accuracy}')
