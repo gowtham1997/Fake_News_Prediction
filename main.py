@@ -4,6 +4,8 @@ import utils
 import nnlm_eager as nnlm
 import models
 import train
+import time
+import os
 
 from tensorflow.keras import optimizers
 
@@ -26,7 +28,7 @@ MAX_LEN_JUSTIFICATION = 20
 LSTM_HIDDEN_UNITS_STATEMENT = 256
 LSTM_HIDDEN_UNITS_JUSTIFICATION = 256
 
-META_MODEL_UNITS = 128
+META_MODEL_UNITS = 256
 COUNTS_MODEL_UNITS = 64
 
 EMBEDDING_DIM = 128
@@ -37,15 +39,18 @@ BINARY_CLASSIFICATION = True
 
 if BINARY_CLASSIFICATION:
     NUM_CLASSES = 2
+    CHECKPOINT_PATH = 'checkpoints_binary/'
 else:
     NUM_CLASSES = 6
+    CHECKPOINT_PATH = 'checkpoints_multiclass/'
 
 NUM_EPOCHS = 20
-BATCH_SIZE = 8
+BATCH_SIZE = 32
 LEARNING_RATE = 0.001
 
 TRAIN_TEXT_ENCODER = False
 REPEAT_FIRST_BATCH = False
+
 
 if __name__ == "__main__":
 
@@ -77,7 +82,25 @@ if __name__ == "__main__":
                                             NUM_CLASSES)
     optimizer = optimizers.Adam(learning_rate=LEARNING_RATE)
 
+    checkpoint_dir = CHECKPOINT_PATH
+    checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
+    if TRAIN_TEXT_ENCODER:
+        checkpoint = tf.train.Checkpoint(
+            optimizer=optimizer,
+            text_encoder=text_encoder,
+            meta_model=meta_model,
+            counts_model=counts_model,
+            multimode_model=multimode_model)
+    else:
+        checkpoint = tf.train.Checkpoint(
+            optimizer=optimizer,
+            meta_model=meta_model,
+            counts_model=counts_model,
+            multimode_model=multimode_model)
+
+    best_val_loss = 1000
     for epoch in range(NUM_EPOCHS):
+        start = time.time()
         loss, accuracy = train.train_one_epoch(
             train_df, BATCH_SIZE, optimizer,
             text_encoder, meta_model, counts_model, multimode_model,
@@ -87,10 +110,24 @@ if __name__ == "__main__":
         print(
             f'Epoch: {epoch + 1}, '
             f'train_loss: {loss}, train_accuracy: {accuracy}')
-        loss, accuracy = train.predict_one_epoch(
+        val_loss, val_accuracy = train.predict_one_epoch(
             val_df, BATCH_SIZE, text_encoder, meta_model, counts_model,
             multimode_model,
             binary_classification=BINARY_CLASSIFICATION)
         print(
             f'Epoch: {epoch + 1}, '
-            f'  val_loss: {loss},   val_accuracy: {accuracy}')
+            f'  val_loss: {val_loss},   val_accuracy: {val_accuracy}')
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            checkpoint.save(file_prefix=checkpoint_prefix)
+            print('Model saved !!!')
+
+        print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
+
+    # restore latest checkpoint
+    checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
+    test_loss, test_accuracy = train.predict_one_epoch(
+        test_df, BATCH_SIZE, text_encoder, meta_model, counts_model,
+        multimode_model,
+        binary_classification=BINARY_CLASSIFICATION)
+    print(f'  Test_loss: {test_loss},   Test_accuracy: {test_accuracy}')
