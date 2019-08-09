@@ -128,7 +128,7 @@ def predict_one_step(
                                  justifications_features,
                                  meta_features,
                                  counts_features], -1)
-    logits = multimode_model(multimode_feats)
+    logits = multimode_model(multimode_feats, is_training)
 
     loss = compute_loss(logits=logits,
                         labels=_labels,

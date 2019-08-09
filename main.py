@@ -22,14 +22,15 @@ TEST_CSV_PATH = 'LIAR-PLUS/dataset/mod_test.csv'
 EMBEDDING_DIR = 'pretrained_embeddings/'
 
 
-MAX_LEN_STATMENT = 20
-MAX_LEN_JUSTIFICATION = 20
+MAX_LEN_STATMENT = 50
+MAX_LEN_JUSTIFICATION = 100
 
 LSTM_HIDDEN_UNITS_STATEMENT = 256
 LSTM_HIDDEN_UNITS_JUSTIFICATION = 256
 
 META_MODEL_UNITS = 256
 COUNTS_MODEL_UNITS = 64
+MULTIMODE_MODEL_UNITS = 1024
 
 EMBEDDING_DIM = 128
 
@@ -79,6 +80,7 @@ if __name__ == "__main__":
     meta_model = models.MetaModel(meta_features_shape, META_MODEL_UNITS)
     counts_model = models.CountModel(counts_features_shape, COUNTS_MODEL_UNITS)
     multimode_model = models.MultiModeModel(multimode_features_shape,
+                                            MULTIMODE_MODEL_UNITS,
                                             NUM_CLASSES)
     optimizer = optimizers.Adam(learning_rate=LEARNING_RATE)
 

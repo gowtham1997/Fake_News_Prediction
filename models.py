@@ -75,8 +75,8 @@ class MultiModeModel(tf.keras.Model):
         model (tf.Keras.Model)
     """
 
-    def __init__(self, input_shape: typ.Tuple[int, int, int],
-                 num_classes):
+    def __init__(self, input_shape: typ.Tuple[int, int, int], fc_units=1024,
+                 num_classes=6):
         """initialise the model object
 
         Args:
@@ -90,16 +90,16 @@ class MultiModeModel(tf.keras.Model):
         #     # tf.keras.layers.BatchNormalization(momentum=BATCH_NORM_MOMENTUM)
         # ])
         self.d1 = tf.keras.layers.Dense(
-            units=num_classes, input_shape=input_shape)
-        # self.d2 = tf.keras.layers.Dense(
-        #     units=fc_units, input_shape=(None, fc_units))
+            units=1024, input_shape=input_shape)
+        self.d2 = tf.keras.layers.Dense(
+            units=num_classes, input_shape=(None, fc_units))
 
-        # self.bn1 = tf.keras.layers.BatchNormalization(
-        #     momentum=BATCH_NORM_MOMENTUM)
+        self.bn1 = tf.keras.layers.BatchNormalization(
+            momentum=BATCH_NORM_MOMENTUM)
         # self.bn2 = tf.keras.layers.BatchNormalization(
         #     momentum=BATCH_NORM_MOMENTUM)
 
-    def __call__(self, _input):
+    def __call__(self, _input, is_training):
         """Run the model.
 
         Args:
@@ -110,7 +110,9 @@ class MultiModeModel(tf.keras.Model):
         """
         # return self.bn1(self.model(_input), training=is_training)
         # x = tf.nn.relu(self.bn1(self.d1(_input), training=is_training))
-        x = self.d1(_input)
+        x = tf.nn.relu(self.bn1(self.d1(_input), training=is_training))
+        x = self.d2(x)
+
         return x
 
 
