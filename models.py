@@ -99,7 +99,7 @@ class MultiModeModel(tf.keras.Model):
         # self.bn2 = tf.keras.layers.BatchNormalization(
         #     momentum=BATCH_NORM_MOMENTUM)
 
-    def __call__(self, _input, is_training):
+    def __call__(self, _input, is_training=True):
         """Run the model.
 
         Args:
