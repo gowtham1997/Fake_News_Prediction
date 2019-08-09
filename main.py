@@ -89,9 +89,12 @@ if __name__ == "__main__":
     checkpoint_dir = CHECKPOINT_PATH
     checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
     if TRAIN_TEXT_ENCODER:
+        # somehow tfeager models are not trackable
+        # hence we cant save the embedding
+        # ValueError: `Checkpoint` was expecting a trackable object (an object derived from `TrackableBase`), got <nnlm_eager.NNLMEncoder object at 0x7f689064bda0>. If you believe this object should be trackable (i.e. it is part of the TensorFlow Python API and manages state), please open an issue.
         checkpoint = tf.train.Checkpoint(
             optimizer=optimizer,
-            text_encoder=text_encoder,
+            # text_encoder=text_encoder,
             meta_model=meta_model,
             counts_model=counts_model,
             multimode_model=multimode_model)
