@@ -35,6 +35,8 @@ MULTIMODE_MODEL_UNITS = 1024
 EMBEDDING_DIM = 128
 
 SENTENCE_ENCODER = 'NNLM'
+# SENTENCE_ENCODER = 'USC'
+# SENTENCE_ENCODER = 'GLOVE'
 
 BINARY_CLASSIFICATION = False
 
@@ -49,7 +51,7 @@ NUM_EPOCHS = 20
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
 
-TRAIN_TEXT_ENCODER = False
+TRAIN_TEXT_ENCODER = True
 REPEAT_FIRST_BATCH = False
 
 
@@ -120,7 +122,7 @@ if __name__ == "__main__":
             f'Epoch: {epoch + 1}, '
             f'  val_loss: {val_loss},   val_accuracy: {val_accuracy}')
         if val_accuracy > best_val_acc:
-            best_val_loss = val_loss
+            best_val_acc = val_accuracy
             checkpoint.save(file_prefix=checkpoint_prefix)
             print('Model saved !!!')
 
