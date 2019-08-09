@@ -34,7 +34,7 @@ MULTIMODE_MODEL_UNITS = 1024
 
 EMBEDDING_DIM = 128
 
-SENTENCE_ENCODER = 'NNLM'
+SENTENCE_ENCODER = 'nnlm'
 
 BINARY_CLASSIFICATION = False
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
             counts_model=counts_model,
             multimode_model=multimode_model)
 
-    best_val_loss = 1000
+    best_val_acc = 0.00
     for epoch in range(NUM_EPOCHS):
         start = time.time()
         loss, accuracy = train.train_one_epoch(
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         print(
             f'Epoch: {epoch + 1}, '
             f'  val_loss: {val_loss},   val_accuracy: {val_accuracy}')
-        if val_loss < best_val_loss:
+        if val_accuracy > best_val_acc:
             best_val_loss = val_loss
             checkpoint.save(file_prefix=checkpoint_prefix)
             print('Model saved !!!')

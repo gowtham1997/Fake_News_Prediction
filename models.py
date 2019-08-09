@@ -7,6 +7,8 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 import tensorflow as tf
 tf.enable_eager_execution()
+from tensorflow.keras.layers import Bidirectional, LSTM, Dense, \
+    MaxPool1D, Conv1D, Embedding
 # ignore sklearn's warnings
 warnings.filterwarnings("ignore", category=exp.UndefinedMetricWarning)
 flags = tf.app.flags
@@ -161,3 +163,79 @@ class CountModel(tf.keras.Model):
         x = tf.nn.relu(self.bn1(self.d1(_input), training=is_training))
         x = tf.nn.relu(self.bn2(self.d2(x), training=is_training))
         return x
+
+
+class BiLSTMDense(tf.keras.Model):
+
+    """Model object
+
+    Attributes:
+        model (TYPE): Description
+        model (tf.Keras.Model)
+    """
+
+    def __init__(self, vocab_size, emb_dim, embedding_matrix, seq_len):
+        """initialise the model object
+
+        Args:
+            input_shape (typ.Tuple[int, int, int]): input_shape
+            num_classes (int): number of classes
+        """
+        super(BiLSTMDense, self).__init__()
+        self.model = tf.keras.Sequential()
+        self.model.add(Embedding(vocab_size, emb_dim, embeddings_initializer=[
+                       embedding_matrix],
+            input_length=seq_len, trainable=False))
+        self.model.add(Bidirectional(LSTM(50)))
+        # model.add(Bidirectional(LSTM(10)))
+        self.model.add(Dense(128))
+        self.model.add(tf.nn.relu)
+
+    def __call__(self, _input):
+        """Run the model.
+
+        Args:
+            _input (TYPE): input to the model, mostly the embeddings
+
+        Returns:
+            TYPE: Outputs after passing through the dense layers
+        """
+        return self.model(_input)
+
+
+class Conv1DModel(tf.keras.Model):
+
+    """Model object
+
+    Attributes:
+        model (TYPE): Description
+        model (tf.Keras.Model)
+    """
+
+    def __init__(self, vocab_size, emb_dim, embedding_matrix, seq_len):
+        """initialise the model object
+
+        Args:
+            input_shape (typ.Tuple[int, int, int]): input_shape
+            num_classes (int): number of classes
+        """
+        super(Conv1DModel, self).__init__()
+        self.model = tf.keras.Sequential()
+        self.model.add(Embedding(vocab_size, emb_dim, embeddings_initializer=[
+                       embedding_matrix],
+            input_length=seq_len, trainable=False))
+        self.model.add(Conv1D(filters=64, kernel_size=(2, 3, 4),
+                              activation='relu'))
+        # model.add(Bidirectional(LSTM(10)))
+        self.model.add(MaxPool1D(pool_size=2))
+
+    def __call__(self, _input):
+        """Run the model.
+
+        Args:
+            _input (TYPE): input to the model, mostly the embeddings
+
+        Returns:
+            TYPE: Outputs after passing through the dense layers
+        """
+        return self.model(_input)

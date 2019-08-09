@@ -2,7 +2,11 @@ from keras.utils import to_categorical
 import numpy as np
 
 import tensorflow as tf
+from nltk.stem import   WordNetLemmatizer
+from tqdm import tqdm_notebook
 tf.enable_eager_execution()
+
+wordnet_lemmatizer = WordNetLemmatizer()
 
 
 def get_suffixed_columns(df, suffix):
@@ -84,3 +88,79 @@ def batch(df, batch_size, repeat_first_batch=False):
         idx += batch_size
         if (len(df) - idx) < batch_size or idx >= len(df):
             raise StopIteration
+
+
+# https://colab.research.google.com/github/tensorflow/tensorflow/blob/master/tensorflow/contrib/eager/python/examples/nmt_with_attention/nmt_with_attention.ipynb
+class ColumnIndex():
+    def __init__(self, sentences):
+        self.sentences = sentences
+        self.word2idx = {}
+        self.idx2word = {}
+        self.vocab = set()
+
+        self.create_index()
+
+    def create_index(self):
+        for phrase in self.sentences:
+            self.vocab.update(phrase.split(' '))
+
+        self.vocab = sorted(self.vocab)[:10000]
+
+        self.word2idx['<pad>'] = 0
+        for index, word in enumerate(self.vocab):
+            self.word2idx[word] = index + 1
+
+        for word, index in self.word2idx.items():
+            self.idx2word[index] = word
+
+
+def max_length(tensor):
+    return max(len(t) for t in tensor)
+
+
+def prepare_text_column(df, column, max_len, glove_emb_dict):
+    sentences = df[column].astype('str').values
+
+    # remove stop words
+    mod_sentences = []
+    for sen in sentences:
+        word_list = [wordnet_lemmatizer.lemmatize(token) for token in sen.split(' ')]
+        mod_sentences.append(' '.join(word_list))
+        
+    sentences = [' '.join(sen.split(' ')[:max_len]) for sen in mod_sentences]
+
+    col_utils = ColumnIndex(sentences)
+
+    input_tensor = [[col_utils.word2idx.get(s, len(col_utils.word2idx))
+                     for s in sen.split(' ')] for sen in sentences]
+
+    vocab_size = len(col_utils.word2idx)
+    print(f'vocab_size for {column} is {vocab_size}')
+
+    embedding_matrix = np.zeros((vocab_size, 300))
+
+
+    for word, i in tqdm_notebook(col_utils.word2idx.items()):
+        embedding_vector = glove_emb_dict.get(word, None)
+        if embedding_vector is not None:
+            embedding_matrix[i] = embedding_vector
+
+        input_tensor = tf.keras.preprocessing.sequence.pad_sequences(
+            input_tensor,
+            maxlen=max_len,
+            padding='post')
+
+    return input_tensor, col_utils, embedding_matrix
+
+
+def prepare_glove_dict(path):
+    # load the whole embedding into memory
+    embeddings_index = dict()
+    f = open(path)
+    for line in tqdm_notebook(f):
+        values = line.split()
+        word = values[0]
+        coefs = np.asarray(values[1:], dtype='float32')
+        embeddings_index[word] = coefs
+    f.close()
+    return embeddings_index
